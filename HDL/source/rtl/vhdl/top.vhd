@@ -23,6 +23,8 @@ entity top is
   port (
     clk_i          : in  std_logic;
     reset_n_i      : in  std_logic;
+	 direct_mode_i  : in  std_logic;
+	 display_mode_i : in  std_logic_vector(1 downto 0);
     -- vga
     vga_hsync_o    : out std_logic;
     vga_vsync_o    : out std_logic;
@@ -121,6 +123,22 @@ architecture rtl of top is
   );
   end component;
   
+  --------------------------------------------
+  component reg is
+	generic(
+		WIDTH    : positive := MEM_ADDR_WIDTH;
+		RST_INIT : integer := 0
+	);
+	port(
+		i_clk  : in  std_logic;
+		in_rst : in  std_logic;
+		i_d    : in  std_logic_vector(WIDTH-1 downto 0);
+		o_q    : out std_logic_vector(WIDTH-1 downto 0)
+	);
+end component;
+  --------------------------------------------
+  --------------------------------------------
+  
   
   constant update_period     : std_logic_vector(31 downto 0) := conv_std_logic_vector(1, 32);
   
@@ -156,6 +174,9 @@ architecture rtl of top is
   signal dir_blue            : std_logic_vector(7 downto 0);
   signal dir_pixel_column    : std_logic_vector(10 downto 0);
   signal dir_pixel_row       : std_logic_vector(10 downto 0);
+  
+  --moji signali
+  
 
 begin
 
@@ -211,16 +232,16 @@ begin
     clk_i              => clk_i,
     reset_n_i          => reset_n_i,
     --
-    direct_mode_i      => direct_mode,
+    direct_mode_i      => direct_mode_i,
     dir_red_i          => dir_red,
     dir_green_i        => dir_green,
     dir_blue_i         => dir_blue,
     dir_pixel_column_o => dir_pixel_column,
     dir_pixel_row_o    => dir_pixel_row,
     -- cfg
-    display_mode_i     => display_mode,  -- 01 - text mode, 10 - graphics mode, 11 - text & graphics
+    display_mode_i     => display_mode_i,  -- 01 - text mode, 10 - graphics mode, 11 - text & graphics
     -- text mode interface
-    text_addr_i        => char_address,
+    text_addr_i        => char_address,	-------------aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     text_data_i        => char_value,
     text_we_i          => char_we,
     -- graphics mode interface
@@ -246,15 +267,43 @@ begin
     blue_o             => blue_o     
   );
   
+--  cnt_reg: reg
+--  generic map(
+--		WIDTH => MEM_ADDR_WIDTH -- Register width in bits.
+--  )
+--  port map(
+--		i_clk => i_clk,
+--		in_rst => in_rst,
+--		i_d => next_cnt,
+--		o_q => cnt
+--  );
+--  
   -- na osnovu signala iz vga_top modula dir_pixel_column i dir_pixel_row realizovati logiku koja genereise
   --dir_red
   --dir_green
   --dir_blue
+				 dir_red <= x"FF" when dir_pixel_column >= 0 and dir_pixel_column < (H_RES/8)*2 else
+								x"FF" when dir_pixel_column >= (H_RES/8)*4 and dir_pixel_column >= (H_RES/8)*6 else
+								x"00";
+				 
+				 dir_green <= x"FF" when dir_pixel_column >= 0 and dir_pixel_column < (H_RES/8)*4 else x"00";
+				 
+				 dir_blue <= x"FF" when dir_pixel_column >= 0 and dir_pixel_column < (H_RES/8) else
+								 x"FF" when dir_pixel_column >= (H_RES/8)*2 and dir_pixel_column < (H_RES/8)*3 else
+								 x"FF" when dir_pixel_column >= (H_RES/8)*4 and dir_pixel_column < (H_RES/8)*5 else
+								 x"FF" when dir_pixel_column >= (H_RES/8)*6 and dir_pixel_column < (H_RES/8)*7 else
+								 x"00";
  
   -- koristeci signale realizovati logiku koja pise po TXT_MEM
   --char_address
   --char_value
   --char_we
+  ---9600
+  char_we <= '1';
+  char_value <= "010110";
+  char_address<="00001001011000";
+  
+  
   
   -- koristeci signale realizovati logiku koja pise po GRAPH_MEM
   --pixel_address
